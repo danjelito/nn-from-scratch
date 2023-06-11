@@ -47,34 +47,39 @@ class Loss_CategoricalCrossentropy(Loss):
                                 keepdims= True)
         neg_log= -np.log(confidences)
         return neg_log
-    
-# create dataset
-n_samples= 100
-n_classes= 3
-X, y= spiral_data(samples= n_samples, classes= n_classes)
-n_features= X.shape[1]
 
-# layer 1 dense, 2 inputs (because 2 features), 3 neurons, relu
-layer1= Layer_Dense(n_features= n_features, n_neurons= 3)
-activ1= Activation_ReLU()
 
-# layer 2 dense, 3 inputs (because layer 1= 3 neurons), softmax
-# 3 outputs (because there are 3 classes)
-layer2= Layer_Dense(n_features= 3, n_neurons= n_classes)
-activ2= Activation_Softmax()
+if __name__ == "__main__":
 
-# loss function
-loss_function= Loss_CategoricalCrossentropy()
+    # create dataset
+    n_samples= 100
+    n_classes= 3
+    X, y= spiral_data(samples= n_samples, classes= n_classes)
+    n_features= X.shape[1]
 
-# perform forward pass
-layer1.forward(X)
-activ1.forward(layer1.output)
-layer2.forward(activ1.output)
-activ2.forward(layer2.output)
+    # layer 1 dense, 2 inputs (because 2 features), 3 neurons, relu
+    layer1= Layer_Dense(n_features= n_features, n_neurons= 3)
+    activ1= Activation_ReLU()
 
-# see the output
-print(activ2.output[:5])
+    # layer 2 dense, 3 inputs (because layer 1= 3 neurons), softmax
+    # 3 outputs (because there are 3 classes)
+    layer2= Layer_Dense(n_features= 3, n_neurons= n_classes)
+    activ2= Activation_Softmax()
 
-# calculate loss
-loss= loss_function.calculate(y, activ2.output)
-print(f'loss = {loss}')
+    # loss function
+    loss_function= Loss_CategoricalCrossentropy()
+
+    # perform forward pass
+    layer1.forward(X)
+    activ1.forward(layer1.output)
+    layer2.forward(activ1.output)
+    activ2.forward(layer2.output)
+
+    # see the output
+    print(activ2.output[:5])
+
+    # calculate loss
+    loss= loss_function.calculate(y, activ2.output)
+    print(f'loss = {loss}')
+
+    print(activ2.output)
