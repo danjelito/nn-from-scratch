@@ -7,23 +7,64 @@ nnfs.init()
 class Layer_Dense():
 
     def __init__(self, n_features, n_neurons):
-        self.weight= 0.01 * np.random.randn(n_features, n_neurons)
-        self.bias= np.zeros((1, n_neurons))
+        # initialize weights and biases
+        self.weights= 0.01 * np.random.randn(n_features, n_neurons)
+        self.biases= np.zeros((1, n_neurons))
 
     def forward(self, inputs):
-        self.output= np.dot(inputs, self.weight) + self.bias
+        # remember input to be used in backprop
+        self.inputs= inputs 
+        # calculate output values
+        self.output= np.dot(inputs, self.weights) + self.biases
+
+    def backward(self, dvalues):
+        # gradient on parameters
+        self.dweights= np.dot(self.inputs.T, dvalues)
+        self.dbiases= np.sum(dvalues, axis= 0, keepdims= True)
+        # gradient on values
+        self.dinputs= np.dot(dvalues, self.weights.T)
 
 class Activation_ReLU:
 
     def forward(self, inputs):
+        # remember input to be used in backprop
+        self.inputs= inputs 
         self.output= np.maximum(0, inputs)
+
+    def backward(self, dvalues):
+        # create a copy of original var
+        # because we need to modify it
+        self.dinputs= dvalues.copy()
+        # 0 gradient where input values where negative
+        self.dinputs[self.inputs <= 0] = 0
 
 class Activation_Softmax:
 
     def forward(self, inputs):
+        # remember input values
+        self.inputs= inputs
+        # get unnormalized probas
         exp= np.exp(inputs - np.max(inputs, axis= 1, keepdims= True))
+        # normalize probas
         probas= exp / np.sum(exp, axis= 1, keepdims=True)
         self.output= probas
+
+    def backward(self, dvalues):
+        # create uninitialized array
+        self.dinputs= np.empty_like(dvalues)
+
+        # enumerate outputs and gradients
+        for index, (single_output, single_dvalues) in \
+            enumerate(zip(self.output, dvalues)):
+            # flatten output array
+            single_output= single_output.reshape(-1, 1)
+            # calculate jacobian matrix of the output
+            jacobian_matrix= np.diagflat(single_output) - \
+                np.dot(single_output, single_output.T)
+            # calculate sample-wise gradient
+            # add it to the aray of sample gradient
+            self.dinputs[index]= np.dot(jacobian_matrix, 
+                                        single_dvalues)
 
 class Loss:
 
@@ -81,5 +122,3 @@ if __name__ == "__main__":
     # calculate loss
     loss= loss_function.calculate(y, activ2.output)
     print(f'loss = {loss}')
-
-    print(activ2.output)
