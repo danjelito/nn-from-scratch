@@ -110,6 +110,37 @@ class Loss_CategoricalCrossentropy(Loss):
         # normalize gradient
         self.dinputs= self.dinputs / n_samples
 
+# combined softmax activation and crossentropy loss 
+# for faster backward steps
+class Activation_Softmax_Loss_CategoricalCrossentropy():
+
+    # creates activation and loss function objects
+    def __init__(self):
+        self.activation = Activation_Softmax()
+        self.loss = Loss_CategoricalCrossentropy()
+
+    def forward(self, inputs, y_true):
+        # output layer's activation function
+        self.activation.forward(inputs)
+        # set the output
+        self.output = self.activation.output
+        # calculate and return loss value
+        return self.loss.calculate(y_true, self.output)
+
+    def backward(self, dvalues, y_true):
+        # calculate number of samples
+        n_samples = len(dvalues)
+        # if labels are one-hot encoded,
+        # turn them into discrete values
+        if len(y_true.shape) == 2:
+            y_true = np.argmax(y_true, axis=1)
+        # copy so we can safely modify
+        self.dinputs = dvalues.copy()
+        # calculate gradient
+        self.dinputs[range(n_samples), y_true] -= 1
+        # normalize gradient
+        self.dinputs = self.dinputs / n_samples
+
 
 if __name__ == "__main__":
 
@@ -126,20 +157,40 @@ if __name__ == "__main__":
     # layer 2 dense, 3 inputs (because layer 1= 3 neurons), softmax
     # 3 outputs (because there are 3 classes)
     layer2= Layer_Dense(n_features= 3, n_neurons= n_classes)
-    activ2= Activation_Softmax()
 
-    # loss function
-    loss_function= Loss_CategoricalCrossentropy()
+    # combine softmax activation with loss function
+    loss_activation= Activation_Softmax_Loss_CategoricalCrossentropy()
 
     # perform forward pass
     layer1.forward(X)
     activ1.forward(layer1.output)
     layer2.forward(activ1.output)
-    activ2.forward(layer2.output)
+    loss= loss_activation.forward(layer2.output, y)
 
     # see the output
-    print(activ2.output[:5])
+    print(loss_activation.output[:5])
 
     # calculate loss
-    loss= loss_function.calculate(y, activ2.output)
     print(f'loss = {loss}')
+
+    # calculate accuracy from output of activation2 and targets
+    # calculate values along first axis
+    predictions = np.argmax(loss_activation.output, axis=1)
+    if len(y.shape) == 2:
+        y = np.argmax(y, axis=1)
+    accuracy = np.mean(predictions==y)
+
+    # Print accuracy
+    print('acc:', accuracy)
+
+    # Backward pass
+    loss_activation.backward(loss_activation.output, y)
+    layer2.backward(loss_activation.dinputs)
+    activ1.backward(layer2.dinputs)
+    layer1.backward(activ1.dinputs)
+
+    # Print gradients
+    print(layer1.dweights)
+    print(layer1.dbiases)
+    print(layer2.dweights)
+    print(layer2.dbiases)
