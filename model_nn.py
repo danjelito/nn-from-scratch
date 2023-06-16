@@ -44,7 +44,8 @@ class Activation_Softmax:
         # remember input values
         self.inputs= inputs
         # get unnormalized probas
-        exp= np.exp(inputs - np.max(inputs, axis= 1, keepdims= True))
+        exp= np.exp(inputs - np.max(inputs, axis= 1, 
+                                    keepdims= True))
         # normalize probas
         probas= exp / np.sum(exp, axis= 1, keepdims=True)
         self.output= probas
@@ -66,28 +67,48 @@ class Activation_Softmax:
             self.dinputs[index]= np.dot(jacobian_matrix, 
                                         single_dvalues)
 
+# common loss class
 class Loss:
 
     def calculate(self, y, output):
+        # loss for all samples
         sample_losses= self.forward(y, output)
+        # mean loss 
         data_loss= np.mean(sample_losses)
         return data_loss
     
 class Loss_CategoricalCrossentropy(Loss):
 
     def forward(self, y_true, y_pred):
+        # calculate number of samples in a batch
         n_samples= y_true.shape[0]
         # check the shape of y_true
         n_dims= len(y_true.shape)
+        # clip the values to prevent division by 0
         y_pred_clipped= np.clip(y_pred, 1e-7, 1-1e-7)
         if n_dims == 1:
+            # for categorical labels
             confidences= y_pred_clipped[range(n_samples), y_true]
         else: 
+            # for one-hot labels
             confidences= np.sum(y_true * y_pred_clipped, 
                                 axis= 1, 
                                 keepdims= True)
         neg_log= -np.log(confidences)
         return neg_log
+    
+    def backward(self, dvalues, y_true):
+        # calculate number of samples
+        n_samples= len(dvalues)
+        # number of labels in every sample
+        labels= len(dvalues[0])
+        # if labels are sparse, turn them into one-hot
+        if len(y_true.shape) == 1:
+            y_true= np.eye(labels)[y_true]
+        # calculate gradient
+        self.dinputs= -y_true / dvalues
+        # normalize gradient
+        self.dinputs= self.dinputs / n_samples
 
 
 if __name__ == "__main__":
